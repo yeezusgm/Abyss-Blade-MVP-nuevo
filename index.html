@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abyss Blade</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- CURSOR PERSONALIZADO -->
+  <div id="custom-cursor">
+    <div class="cursor-ring"></div>
+    <div class="cursor-dot"></div>
+    <div class="cursor-cross">
+      <span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE INICIO -->
+  <div id="start-screen">
+    <div class="title-wrapper">
+      <div class="title-glow">ABYSS BLADE</div>
+      <h1 id="game-title">ABYSS BLADE</h1>
+      <p class="subtitle">La espada del abismo despertó. Solo Tom puede detenerla.</p>
+      <div class="lore-text">
+        "Las cavernas guardan secretos oscuros. Los guardianes del abismo han sellado los portales.<br>
+        Tom, el último portador de la Abyss Blade, debe abrirse paso a través de dos niveles<br>
+        de maldad para restaurar la luz en el reino subterráneo."
+      </div>
+      <div class="controls-hint">
+        <span>← → Moverse</span>
+        <span>Z / Espacio  Saltar</span>
+        <span>X  Doble salto</span>
+        <span>P  Atacar</span>
+      </div>
+      <button id="start-btn">ENTRAR AL ABISMO</button>
+    </div>
+    <div class="particles" id="particles"></div>
+  </div>
+
+  <!-- CANVAS DEL JUEGO -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-left">
+      <span class="hud-label">TOM</span>
+      <div id="health-bar-wrap">
+        <div id="health-bar"></div>
+      </div>
+    </div>
+    <div id="hud-center">
+      <span id="zone-name">— Cavernas del Abismo —</span>
+      <div id="objective-box">
+        <span class="hud-label">OBJETIVO</span>
+        <span id="objective-text">Elimina a todos los guardianes del abismo</span>
+      </div>
+    </div>
+    <div id="hud-right">
+      <span class="hud-label">ÁREA</span>
+      <span id="area-label">Nivel 1</span>
+      <span id="enemy-counter" class="hud-label"></span>
+    </div>
+  </div>
+
+  <!-- DIÁLOGO NARRATIVO -->
+  <div id="narrative-box" class="hidden">
+    <div id="narrative-portrait">⚔</div>
+    <div id="narrative-content">
+      <div id="narrative-speaker">TOM</div>
+      <div id="narrative-text"></div>
+    </div>
+    <div id="narrative-hint">[ ESPACIO / ENTER para continuar ]</div>
+  </div>
+
+  <!-- COFRE / OBJETO INTERACTIVO -->
+  <div id="interact-hint" class="hidden">
+    <span>[ F ] Abrir</span>
+  </div>
+
+  <!-- PAUSA -->
+  <div id="pause-screen" class="hidden">
+    <div class="pause-box">
+      <div class="pause-title">PAUSA</div>
+      <button class="pause-btn" onclick="resumeGame()">CONTINUAR</button>
+      <button class="pause-btn" onclick="restartGame()">REINICIAR</button>
+      <button class="pause-btn btn-danger" onclick="goToStartScreen()">VOLVER AL INICIO</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
