@@ -8,6 +8,49 @@
 // ── Utilidades ─────────────────────────────────────
 const $ = id => document.getElementById(id);
 
+// ══════════════════════════════════════════════════
+//   MENÚ PRINCIPAL — Navegación entre pantallas
+//   Controles, Créditos, y botón Jugar
+// ══════════════════════════════════════════════════
+(function initMenu() {
+  // Botón "Controles"
+  const controlsBtn  = $('controls-btn');
+  const controlsBack = $('controls-back-btn');
+  const controlsScreen = $('controls-screen');
+
+  controlsBtn.addEventListener('click', () => {
+    controlsScreen.classList.remove('hidden');
+    controlsScreen.classList.add('fade-in');
+  });
+  controlsBack.addEventListener('click', () => {
+    controlsScreen.classList.add('hidden');
+  });
+
+  // Botón "Créditos"
+  const creditsBtn  = $('credits-btn');
+  const creditsBack = $('credits-back-btn');
+  const creditsScreen = $('credits-screen');
+
+  creditsBtn.addEventListener('click', () => {
+    creditsScreen.classList.remove('hidden');
+    creditsScreen.classList.add('fade-in');
+  });
+  creditsBack.addEventListener('click', () => {
+    creditsScreen.classList.add('hidden');
+  });
+
+  // Aplicar efecto de cursor dorado a todos los botones de menú
+  function attachHoverAll() {
+    const cursor = $('custom-cursor');
+    document.querySelectorAll('.menu-btn, .pause-btn').forEach(btn => {
+      btn.addEventListener('mouseenter', () => cursor && cursor.classList.add('on-btn'));
+      btn.addEventListener('mouseleave', () => cursor && cursor.classList.remove('on-btn'));
+    });
+  }
+  // Esperar a que el DOM esté listo para otros botones dinámicos
+  setTimeout(attachHoverAll, 100);
+})();
+
 // ── Canvas & Contexto ───────────────────────────────
 const canvas = $('gameCanvas');
 const ctx    = canvas.getContext('2d');
@@ -26,6 +69,20 @@ let gamePaused   = false;
 let animFrameId  = null;
 let currentLevel = 1;
 
+// ── Fragmentos recolectables ─────────────────────
+// totalFragments se incrementa al recolectar; se muestra en HUD y pantalla final
+let totalFragments = 0;
+
+// ── Energía del abismo (se regenera lentamente) ──
+// Se usa al atacar; valor cosmético en esta demo
+let abyssEnergy    = 100;
+let abyssEnergyMax = 100;
+
+// ── Guía en pantalla ─────────────────────────────
+// Muestra una flecha de ayuda cuando el jugador lleva mucho tiempo sin moverse
+let guideTimer = 0;
+const GUIDE_IDLE_THRESHOLD = 300; // frames de inactividad antes de mostrar guía
+
 // ── Sistema de narrativa ────────────────────────────
 const narrativeQueue = [];
 let narrativeActive  = false;
@@ -35,18 +92,35 @@ let narrativeTypeTick = 0;
 let narrativePaused  = false;
 
 const NARRATIVES = {
+  // ── Introducción narrativa antes del gameplay ──
+  // Contextualiza al jugador en 4 líneas
   intro: [
-    { speaker: 'TOM', portrait: '⚔', text: 'El abismo... puedo sentir su oscuridad. La espada tiembla en mi mano.' },
-    { speaker: 'ORÁCULO', portrait: '🌀', text: 'Tom, los guardianes han sellado el camino. Debes eliminarlos a todos para abrir el portal al siguiente nivel.' },
-    { speaker: 'TOM', portrait: '⚔', text: 'Entendido. Que tiemblen ante la Abyss Blade.' },
+    { speaker: 'ORÁCULO', portrait: '🌀', text: 'El reino subterráneo ha caído en silencio. Una corrupción antigua consume las cavernas desde adentro.' },
+    { speaker: 'ORÁCULO', portrait: '🌀', text: 'Los guardianes del abismo han sellado cada portal, atrapando la oscuridad… y a los que osan atravesarla.' },
+    { speaker: 'TOM',     portrait: '⚔', text: 'La Abyss Blade vibra en mi mano. Siente lo que yo siento: que esto apenas comienza.' },
+    { speaker: 'TOM',     portrait: '⚔', text: 'Elimina a los guardianes. Recoge los fragmentos de luz. Abre el camino. No hay otra salida.' },
   ],
+
+  // ── Nivel 2 ──
   level2: [
-    { speaker: 'ORÁCULO', portrait: '🌀', text: 'La Forja del Abismo... aquí los enemigos son más peligrosos. ¡Ten cuidado con los elites!' },
-    { speaker: 'TOM', portrait: '⚔', text: 'No importa cuántos vengan. El abismo será conquistado.' },
+    { speaker: 'ORÁCULO', portrait: '🌀', text: 'La Forja del Abismo... aquí los guardianes son más antiguos. Sus almas llevan siglos corrompidas.' },
+    { speaker: 'TOM',     portrait: '⚔', text: 'No importa cuántos vengan. El abismo no me detendrá.' },
   ],
+
+  // ── Mensaje del altar / estatua en el nivel 1 ──
+  // Se activa al interactuar con el altar interactivo
+  altar: [
+    { speaker: 'ESTATUA', portrait: '🗿', text: 'Portador… la corrupción del abismo se extiende más allá de estas cavernas.' },
+    { speaker: 'ESTATUA', portrait: '🗿', text: 'Los fragmentos de luz que aún quedan son el último vínculo con lo que fue. Recógelos antes de que sean consumidos.' },
+    { speaker: 'TOM',     portrait: '⚔', text: '¿Qué espera más adelante?' },
+    { speaker: 'ESTATUA', portrait: '🗿', text: 'Oscuridad sin forma. Pero la espada del abismo conoce el camino. Confía en ella.' },
+  ],
+
+  // ── Victoria / fin de la demo ──
   victory: [
-    { speaker: 'TOM', portrait: '⚔', text: 'El abismo cae. La luz regresa al reino subterráneo.' },
-    { speaker: 'ORÁCULO', portrait: '🌀', text: '¡Lo has conseguido, portador! La Abyss Blade ha cumplido su destino.' },
+    { speaker: 'TOM',     portrait: '⚔', text: 'Los guardianes han caído. La Forja del Abismo queda en silencio.' },
+    { speaker: 'ORÁCULO', portrait: '🌀', text: 'Lo has logrado, portador. Pero la corrupción viene de más profundo. Esto no ha terminado.' },
+    { speaker: 'TOM',     portrait: '⚔', text: '...Lo sé. La espada ya lo sabe también.' },
   ],
 };
 
@@ -154,6 +228,130 @@ function drawChests() {
   }
 }
 
+// ══════════════════════════════════════════════════
+//   ALTARES / ESTATUAS INTERACTIVAS
+//   El jugador se acerca y presiona E para leer un mensaje narrativo.
+//   Posicionadas estratégicamente al inicio del nivel 1.
+// ══════════════════════════════════════════════════
+let altars = [];
+
+function makeAltar(x, y) {
+  return {
+    x, y,
+    w: 28, h: 48,
+    activated: false,   // true = ya se leyó
+    nearPlayer: false,
+    pulse: 0,
+  };
+}
+
+function spawnAltarsLevel1() {
+  // Un altar al inicio para guiar al jugador y uno a mitad de nivel
+  altars = [
+    makeAltar(430, 1852),   // Cerca del spawn, antes del primer enemigo
+    makeAltar(2650, 1380),  // Mitad de nivel, plataforma sólida
+  ];
+}
+
+function spawnAltarsLevel2() {
+  altars = [
+    makeAltar(430, 3852),
+  ];
+}
+
+function updateAltars() {
+  let anyNear = false;
+  for (const a of altars) {
+    a.pulse = (a.pulse || 0) + 0.03;
+    const dist = Math.hypot(player.x - a.x, player.y - a.y);
+    a.nearPlayer = dist < 80;
+    if (a.nearPlayer) anyNear = true;
+
+    // Presionar E para interactuar
+    if (a.nearPlayer && keys['KeyE'] && !a.activated) {
+      a.activated = true;
+      // Feedback visual en el altar
+      for (let i = 0; i < 18; i++) {
+        spawnParticle(a.x + a.w/2, a.y,
+          (Math.random()-0.5)*5, -Math.random()*4-1,
+          i%2===0 ? '#cc88ff' : '#4af0ff', 28+Math.random()*18);
+      }
+      showScreenMsg('[ EXAMINANDO ESTATUA ]', '#cc88ff', 60);
+      // Abrir diálogo del altar (pausa el juego)
+      setTimeout(() => startNarrative('altar'), 200);
+    }
+  }
+
+  // Mostrar/ocultar hint de interacción
+  const hint = $('altar-hint');
+  if (hint) {
+    const anyUnactivated = altars.some(a => a.nearPlayer && !a.activated);
+    hint.classList.toggle('hidden', !anyUnactivated);
+  }
+}
+
+function drawAltars() {
+  for (const a of altars) {
+    if (!inView(a.x - 20, a.y - 20, a.w + 40, a.h + 40)) continue;
+    const pulse = Math.sin(a.pulse) * 0.3 + 0.7;
+    const cx = a.x + a.w / 2;
+    const activated = a.activated;
+
+    ctx.save();
+
+    // Aura del altar (se apaga al activarse)
+    if (!activated) {
+      const aura = ctx.createRadialGradient(cx, a.y + a.h/2, 0, cx, a.y + a.h/2, 50);
+      aura.addColorStop(0, `rgba(204,136,255,${0.15 * pulse})`);
+      aura.addColorStop(1, 'transparent');
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.ellipse(cx, a.y + a.h/2, 50, 50, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Base de la estatua (bloque de piedra)
+    const baseGrd = ctx.createLinearGradient(a.x, a.y + a.h*0.6, a.x, a.y + a.h);
+    baseGrd.addColorStop(0, '#2a2040');
+    baseGrd.addColorStop(1, '#14102a');
+    ctx.fillStyle = baseGrd;
+    roundRect(ctx, a.x, a.y + a.h * 0.55, a.w, a.h * 0.45, 3);
+    ctx.fill();
+
+    // Figura de la estatua (silueta simple)
+    const figGrd = ctx.createLinearGradient(a.x, a.y, a.x, a.y + a.h * 0.6);
+    figGrd.addColorStop(0, activated ? '#1e1830' : `rgba(180,140,255,${0.6 + pulse*0.4})`);
+    figGrd.addColorStop(1, activated ? '#14102a' : '#3a2060');
+    ctx.fillStyle = figGrd;
+    // Cuerpo de la estatua
+    roundRect(ctx, a.x + 4, a.y + a.h * 0.3, a.w - 8, a.h * 0.32, 3);
+    ctx.fill();
+    // Cabeza
+    ctx.beginPath();
+    ctx.arc(cx, a.y + a.h * 0.22, 9, 0, Math.PI*2);
+    ctx.fillStyle = activated ? '#1e1830' : `rgba(200,160,255,${0.7 + pulse*0.3})`;
+    ctx.fill();
+
+    // Borde brillante si no activada
+    if (!activated) {
+      ctx.strokeStyle = `rgba(204,136,255,${0.5 * pulse})`;
+      ctx.lineWidth = 1.2;
+      ctx.shadowColor = '#cc88ff';
+      ctx.shadowBlur = 8 * pulse;
+      roundRect(ctx, a.x + 4, a.y + a.h * 0.3, a.w - 8, a.h * 0.32, 3);
+      ctx.stroke();
+      // Runa en la base
+      ctx.shadowBlur = 0;
+      ctx.font = `${8 + pulse*2}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = `rgba(204,136,255,${0.6*pulse})`;
+      ctx.fillText('ᚱ', cx, a.y + a.h * 0.9);
+    }
+
+    ctx.restore();
+  }
+}
+
 // ── Ataque del jugador ───────────────────────────────
 const attack = {
   active: false,
@@ -167,6 +365,122 @@ const attack = {
 
 // ── Enemigos ─────────────────────────────────────────
 let enemies = [];
+
+// ══════════════════════════════════════════════════
+//   FRAGMENTOS DE LUZ RECOLECTABLES
+//   Objetos brillantes dispersos por los niveles.
+//   Se reflejan en el contador del HUD.
+//   Al recolectarlos hay feedback visual y se suma totalFragments.
+// ══════════════════════════════════════════════════
+let fragments = [];
+
+function makeFragment(x, y) {
+  return {
+    x, y, w: 14, h: 14,
+    collected: false,
+    bob: Math.random() * Math.PI * 2,
+    rotation: 0,
+  };
+}
+
+function spawnFragmentsLevel1() {
+  fragments = [
+    makeFragment(320,  1850), makeFragment(700,  1850),
+    makeFragment(1150, 1680), makeFragment(1500, 1260),
+    makeFragment(1800, 1090), makeFragment(2400, 1560),
+    makeFragment(2800, 1560), makeFragment(3100, 1270),
+    makeFragment(3500, 360),  makeFragment(4200, 1460),
+  ];
+}
+
+function spawnFragmentsLevel2() {
+  fragments = [
+    makeFragment(320,  3850), makeFragment(700,  3850),
+    makeFragment(1200, 3680), makeFragment(1600, 3490),
+    makeFragment(2000, 3100), makeFragment(2500, 3160),
+    makeFragment(3000, 2600), makeFragment(3500, 2360),
+    makeFragment(4000, 3510), makeFragment(4560, 3260),
+  ];
+}
+
+function updateFragments() {
+  for (const f of fragments) {
+    if (f.collected) continue;
+    f.rotation += 0.04;
+    const pr = { x: player.x - 6, y: player.y - 6, w: player.w + 12, h: player.h + 12 };
+    if (aabbOverlap(pr, { x: f.x, y: f.y, w: f.w, h: f.h })) {
+      f.collected = true;
+      totalFragments++;
+      updateFragmentCounter();
+      // Partículas de recolección (moradas y blancas)
+      for (let i = 0; i < 16; i++) {
+        spawnParticle(f.x + f.w/2, f.y + f.h/2,
+          (Math.random()-0.5)*7, -Math.random()*5-1,
+          i%3===0 ? '#ffffff' : i%3===1 ? '#cc88ff' : '#8844ff',
+          20 + Math.random()*14);
+      }
+      showScreenMsg('◆ Fragmento de Luz recolectado', '#cc88ff', 70);
+      triggerShake(1.5, 5);
+    }
+  }
+}
+
+function drawFragments() {
+  for (const f of fragments) {
+    if (f.collected) continue;
+    if (!inView(f.x - 20, f.y - 20, f.w + 40, f.h + 40)) continue;
+
+    const bob  = Math.sin(tick.v * 2.4 + f.bob) * 4;
+    const glow = Math.sin(tick.v * 2.4 + f.bob) * 0.3 + 0.7;
+    const cx   = f.x + f.w/2;
+    const cy   = f.y + f.h/2 + bob;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(f.rotation);
+
+    // Aura exterior
+    const aura = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
+    aura.addColorStop(0, `rgba(204,136,255,${0.2 * glow})`);
+    aura.addColorStop(1, 'transparent');
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(0, 0, 22, 0, Math.PI*2);
+    ctx.fill();
+
+    // Cristal romboide (diamante)
+    ctx.shadowColor = '#cc88ff';
+    ctx.shadowBlur  = 12 * glow;
+    const grad = ctx.createLinearGradient(-6, -8, 6, 8);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.4, '#cc88ff');
+    grad.addColorStop(1, '#5522aa');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(6, 0);
+    ctx.lineTo(0, 8);
+    ctx.lineTo(-6, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Brillo interno
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * glow})`;
+    ctx.beginPath();
+    ctx.moveTo(-1, -5);
+    ctx.lineTo(2, 0);
+    ctx.lineTo(-1, 3);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function updateFragmentCounter() {
+  const el = $('fragment-count');
+  if (el) el.textContent = totalFragments;
+}
 
 // ── Portal al nivel 2 ────────────────────────────────
 const portal = {
@@ -192,8 +506,13 @@ let screenMsg = { text: '', timer: 0, color: '#4af0ff' };
     btn.addEventListener('mouseenter', () => el.classList.add('on-btn'));
     btn.addEventListener('mouseleave', () => el.classList.remove('on-btn'));
   }
+  // Cubrir todos los botones: menú principal + pausa + overlays
   attachHover($('start-btn'));
-  document.querySelectorAll('.pause-btn').forEach(attachHover);
+  attachHover($('controls-btn'));
+  attachHover($('credits-btn'));
+  attachHover($('controls-back-btn'));
+  attachHover($('credits-back-btn'));
+  document.querySelectorAll('.pause-btn, .menu-btn').forEach(attachHover);
 
   function moveCursor() {
     cx += (mx - cx) * 0.18;
@@ -273,12 +592,14 @@ function updateHealthPickups(dt) {
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
+  // Avanzar diálogo narrativo (Espacio, Enter o Z)
   if (narrativeActive && (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyZ')) {
     advanceNarrative();
     e.preventDefault();
     return;
   }
   if (e.code === 'Escape' && gameRunning) togglePause();
+  // E se procesa en updateAltars()
   e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -602,6 +923,10 @@ $('start-btn').addEventListener('click', startGame);
 
 // ── Iniciar juego ────────────────────────────────────
 function startGame() {
+  // Cerrar pantallas overlay si estuviesen abiertas
+  $('controls-screen').classList.add('hidden');
+  $('credits-screen').classList.add('hidden');
+
   $('start-screen').style.opacity = '0';
   $('start-screen').style.transition = 'opacity 0.6s';
   setTimeout(() => {
@@ -612,7 +937,7 @@ function startGame() {
     gameRunning = true;
     resetPlayer();
     requestAnimationFrame(loop);
-    // Iniciar narrativa de introducción
+    // Iniciar narrativa de introducción (4 líneas de contexto)
     setTimeout(() => startNarrative('intro'), 800);
   }, 600);
 }
@@ -621,7 +946,7 @@ function startGame() {
 const checkpoint = { level: 1, x: 200, y: 1800 };
 
 function resetPlayer() {
-  // Reinicio completo (botón Reiniciar del menú pausa)
+  // Reinicio completo (botón Reiniciar del menú pausa o volver al inicio)
   checkpoint.level = 1;
   checkpoint.x = 200;
   checkpoint.y = 1800;
@@ -629,13 +954,34 @@ function resetPlayer() {
   currentLevel = 1;
   portal.active = false;
   window._victoryShown = false;
+  window._demoEndShown = false;
+
+  // Reiniciar fragmentos y energía del abismo
+  totalFragments = 0;
+  abyssEnergy    = abyssEnergyMax;
+  updateFragmentCounter();
+  updateEnergyBar();
+
   spawnEnemiesLevel1();
   spawnHealthPickupsLevel1();
   spawnChestsLevel1();
-  $('zone-name').textContent = '— Cavernas del Abismo —';
-  $('area-label').textContent = 'Nivel 1';
+  spawnFragmentsLevel1();   // Nuevos fragmentos recolectables
+  spawnAltarsLevel1();       // Altares del nivel 1
+
+  $('zone-name').textContent    = '— Cavernas del Abismo —';
+  $('area-label').textContent   = 'Nivel 1';
   $('objective-text').textContent = 'Elimina a todos los guardianes del abismo';
+
+  // Ocultar pantalla de fin de demo si estaba visible
+  $('demo-end-screen').classList.add('hidden');
+
   updateHealthBar();
+  updateFragmentCounter();
+
+  // Mostrar guía inicial al jugador nuevo (desaparece al moverse)
+  guideTimer = 0;
+  showGuide('Muévete con ← →   Salta con Z   Ataca con P');
+  setTimeout(hideGuide, 6000);
 }
 
 function respawnPlayer() {
@@ -675,6 +1021,14 @@ window.goToStartScreen = () => {
   gameRunning  = false;
   cancelAnimationFrame(animFrameId);
   $('pause-screen').classList.add('hidden');
+  $('demo-end-screen').classList.add('hidden');
+  $('narrative-box').classList.add('hidden');
+
+  // Limpiar flags de narrativa
+  narrativeActive  = false;
+  narrativePaused  = false;
+  window._pendingDemoEnd = false;
+
   // Restaurar pantalla de inicio
   const ss = $('start-screen');
   ss.style.display    = 'flex';
@@ -686,9 +1040,70 @@ window.goToStartScreen = () => {
   window.dispatchEvent(new Event('gameToStart'));
 };
 
-// ── HUD ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════
+//   HUD — Actualización de barras y contadores
+// ══════════════════════════════════════════════════
+
+// Barra de vida con texto numérico
 function updateHealthBar() {
-  $('health-bar').style.width = (player.hp / player.maxHp * 100) + '%';
+  const pct = (player.hp / player.maxHp * 100);
+  $('health-bar').style.width = pct + '%';
+  const txt = $('hp-text');
+  if (txt) txt.textContent = Math.ceil(player.hp) + ' / ' + player.maxHp;
+}
+
+// Barra de energía del abismo (cosmética por ahora, se regenera sola)
+function updateEnergyBar() {
+  const pct = (abyssEnergy / abyssEnergyMax * 100);
+  const bar = $('energy-bar');
+  if (bar) bar.style.width = pct + '%';
+  const txt = $('energy-text');
+  if (txt) txt.textContent = Math.ceil(abyssEnergy) + ' / ' + abyssEnergyMax;
+}
+
+// ── Guía en pantalla ─────────────────────────────────
+// Aparece cuando el jugador no hace nada durante GUIDE_IDLE_THRESHOLD frames
+function showGuide(text) {
+  const guide = $('guide-arrow');
+  const guideTxt = $('guide-text');
+  if (!guide) return;
+  if (guideTxt) guideTxt.textContent = text;
+  guide.classList.remove('hidden');
+}
+function hideGuide() {
+  const guide = $('guide-arrow');
+  if (guide) guide.classList.add('hidden');
+  guideTimer = 0;
+}
+
+// ══════════════════════════════════════════════════
+//   PANTALLA FINAL DE DEMO
+//   Se muestra al terminar el nivel 2 (después de la narrativa de victoria)
+// ══════════════════════════════════════════════════
+function showDemoEndScreen() {
+  if (window._demoEndShown) return;
+  window._demoEndShown = true;
+
+  // Llenar estadísticas
+  const statsEl = $('demo-stats');
+  if (statsEl) {
+    statsEl.textContent =
+      `◆ Fragmentos recolectados: ${totalFragments} / 20`;
+  }
+
+  // Mostrar pantalla con fade
+  const endScreen = $('demo-end-screen');
+  endScreen.classList.remove('hidden');
+  endScreen.style.opacity = '0';
+  endScreen.style.transition = 'opacity 1.2s';
+  requestAnimationFrame(() => {
+    endScreen.style.opacity = '1';
+  });
+
+  // Mostrar cursor de nuevo
+  window.dispatchEvent(new Event('gamePaused'));
+  gameRunning = false;
+  cancelAnimationFrame(animFrameId);
 }
 
 // ── Loop principal ───────────────────────────────────
@@ -718,10 +1133,43 @@ function update(dt) {
   updatePortal(dt);
   updateHealthPickups(dt);
   updateChests(dt);
+  updateFragments();          // Recolección de fragmentos
+  updateAltars();             // Interacción con estatuas
   updateNarrative();
   updateDamageNumbers(dt);
   updateShake(dt);
   updateScreenMsg(dt);
+  updateEnergyRegen(dt);      // Regeneración de energía del abismo
+  updateGuideTimer(dt);       // Guía contextual para el jugador
+}
+
+// ── Regeneración de energía del abismo ───────────────
+// La energía sube lentamente sola (no tiene uso mecánico en esta demo,
+// pero añade presencia visual al HUD y puede usarse en el futuro)
+function updateEnergyRegen(dt) {
+  if (abyssEnergy < abyssEnergyMax) {
+    abyssEnergy = Math.min(abyssEnergyMax, abyssEnergy + 0.08 * dt);
+    updateEnergyBar();
+  }
+}
+
+// ── Guía contextual ────────────────────────────────
+// Si el jugador lleva tiempo sin moverse al inicio, muestra una pista
+function updateGuideTimer(dt) {
+  const moving = Math.abs(player.vx) > 0.3 || Math.abs(player.vy) > 0.5 || attack.active;
+  if (moving) {
+    hideGuide();
+  } else {
+    guideTimer += dt;
+    if (guideTimer >= GUIDE_IDLE_THRESHOLD) {
+      const msg = enemies.length > 0
+        ? 'Derrota a los guardianes para abrir el portal'
+        : portal.active
+          ? 'Portal abierto — avanza hacia la derecha →'
+          : 'Avanza → explora las cavernas';
+      showGuide(msg);
+    }
+  }
 }
 
 function handleInput() {
@@ -884,6 +1332,9 @@ function startAttack() {
   attack.cooldown  = attack.cooldownMax;
   attack.hitEnemies = [];
   player.state     = 'attack';
+  // El ataque drena un poco de energía del abismo (se regenera sola)
+  abyssEnergy = Math.max(0, abyssEnergy - 8);
+  updateEnergyBar();
   // Partículas de espada
   const cx = player.x + player.w / 2 + (player.facingRight ? 30 : -30);
   const cy = player.y + player.h / 2;
@@ -1108,7 +1559,13 @@ function updateEnemies(dt) {
   if (currentLevel === 2 && aliveCount === 0 && enemies.length === 0) {
     if (!window._victoryShown) {
       window._victoryShown = true;
-      setTimeout(() => startNarrative('victory'), 600);
+      // Primero muestra la narrativa de victoria, luego la pantalla de fin de demo
+      setTimeout(() => {
+        startNarrative('victory');
+        // Al finalizar la narrativa de victoria, mostrar pantalla de fin
+        // onNarrativeEnd es llamado desde endNarrative cuando la clave es 'victory'
+        window._pendingDemoEnd = true;
+      }, 600);
     }
   }
   // Actualizar contador de enemigos en HUD
@@ -1153,6 +1610,23 @@ function damagePlayer(amount) {
   if (player.damageFlash > 0) return; // invencibilidad temporal
   player.hp = Math.max(0, player.hp - amount);
   player.damageFlash = 30;
+
+  // El daño también drena un poco de energía del abismo (feedback visual)
+  abyssEnergy = Math.max(0, abyssEnergy - amount * 0.5);
+  updateEnergyBar();
+
+  // Screen shake al recibir daño
+  triggerShake(5, 10);
+
+  // Partículas de daño en el jugador
+  for (let i = 0; i < 8; i++) {
+    spawnParticle(
+      player.x + player.w/2, player.y + player.h/2,
+      (Math.random()-0.5)*6, -Math.random()*4,
+      i%2===0 ? '#ff3355' : '#ff8888', 14+Math.random()*10
+    );
+  }
+
   updateHealthBar();
   if (player.hp <= 0) {
     showScreenMsg('— TOM HA CAÍDO —', '#ff3355', 180);
@@ -1187,8 +1661,10 @@ function enterLevel2() {
   spawnEnemiesLevel2();
   spawnHealthPickupsLevel2();
   spawnChestsLevel2();
-  $('zone-name').textContent = '— Forja del Abismo —';
-  $('area-label').textContent = 'Nivel 2';
+  spawnFragmentsLevel2();   // Fragmentos del nivel 2
+  spawnAltarsLevel2();       // Altares del nivel 2
+  $('zone-name').textContent    = '— Forja del Abismo —';
+  $('area-label').textContent   = 'Nivel 2';
   $('objective-text').textContent = 'Conquista la Forja y derrota a los elites';
   showScreenMsg('NIVEL 2 — FORJA DEL ABISMO', '#e8c84a', 180);
   setTimeout(() => startNarrative('level2'), 1200);
@@ -1247,6 +1723,12 @@ function endNarrative() {
   narrativePaused = false;
   gamePaused = false;
   $('narrative-box').classList.add('hidden');
+
+  // Si estábamos esperando mostrar la pantalla final de demo, hacerlo ahora
+  if (window._pendingDemoEnd) {
+    window._pendingDemoEnd = false;
+    setTimeout(showDemoEndScreen, 800);
+  }
 }
 
 function updateNarrative() {
@@ -1343,6 +1825,12 @@ function render() {
 
   // Cofres
   drawChests();
+
+  // Fragmentos de luz recolectables
+  drawFragments();
+
+  // Altares / estatuas interactivas
+  drawAltars();
 
   // Enemigos
   drawEnemies();

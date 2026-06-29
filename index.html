@@ -8,7 +8,9 @@
 </head>
 <body>
 
-  <!-- CURSOR PERSONALIZADO -->
+  <!-- ══════════════════════════════════════
+       CURSOR PERSONALIZADO
+  ══════════════════════════════════════ -->
   <div id="custom-cursor">
     <div class="cursor-ring"></div>
     <div class="cursor-dot"></div>
@@ -17,39 +19,147 @@
     </div>
   </div>
 
-  <!-- PANTALLA DE INICIO -->
+  <!-- ══════════════════════════════════════
+       PANTALLA DE INICIO / MENÚ PRINCIPAL
+       Muestra el logo del juego y tres opciones
+  ══════════════════════════════════════ -->
   <div id="start-screen">
     <div class="title-wrapper">
       <div class="title-glow">ABYSS BLADE</div>
       <h1 id="game-title">ABYSS BLADE</h1>
       <p class="subtitle">La espada del abismo despertó. Solo Tom puede detenerla.</p>
-      <div class="lore-text">
-        "Las cavernas guardan secretos oscuros. Los guardianes del abismo han sellado los portales.<br>
-        Tom, el último portador de la Abyss Blade, debe abrirse paso a través de dos niveles<br>
-        de maldad para restaurar la luz en el reino subterráneo."
-      </div>
-      <div class="controls-hint">
-        <span>← → Moverse</span>
-        <span>Z / Espacio  Saltar</span>
-        <span>X  Doble salto</span>
-        <span>P  Atacar</span>
-      </div>
-      <button id="start-btn">ENTRAR AL ABISMO</button>
+
+      <!-- Menú principal con tres opciones -->
+      <nav class="main-menu" id="main-menu">
+        <button class="menu-btn menu-btn-primary" id="start-btn">
+          <span class="menu-btn-icon">⚔</span> JUGAR
+        </button>
+        <button class="menu-btn" id="controls-btn">
+          <span class="menu-btn-icon">✦</span> CONTROLES
+        </button>
+        <button class="menu-btn" id="credits-btn">
+          <span class="menu-btn-icon">✧</span> CRÉDITOS
+        </button>
+      </nav>
+
+      <p class="version-label">Demo v0.1 — Abyss Blade</p>
     </div>
     <div class="particles" id="particles"></div>
   </div>
 
-  <!-- CANVAS DEL JUEGO -->
+  <!-- ══════════════════════════════════════
+       PANTALLA DE CONTROLES
+       Se muestra al pulsar "Controles" en el menú
+  ══════════════════════════════════════ -->
+  <div id="controls-screen" class="overlay-screen hidden">
+    <div class="overlay-box">
+      <div class="overlay-title">CONTROLES</div>
+
+      <div class="controls-grid">
+        <div class="control-row">
+          <div class="control-keys"><kbd>← →</kbd> / <kbd>A D</kbd></div>
+          <div class="control-desc">Movimiento horizontal</div>
+        </div>
+        <div class="control-row">
+          <div class="control-keys"><kbd>Z</kbd> / <kbd>Espacio</kbd> / <kbd>↑</kbd></div>
+          <div class="control-desc">Saltar</div>
+        </div>
+        <div class="control-row">
+          <div class="control-keys"><kbd>Z</kbd> <span class="control-note">(en el aire)</span></div>
+          <div class="control-desc">Doble salto</div>
+        </div>
+        <div class="control-row">
+          <div class="control-keys"><kbd>P</kbd></div>
+          <div class="control-desc">Atacar con la Abyss Blade</div>
+        </div>
+        <div class="control-row">
+          <div class="control-keys"><kbd>E</kbd> / <kbd>F</kbd></div>
+          <div class="control-desc">Interactuar / Abrir cofre</div>
+        </div>
+        <div class="control-row">
+          <div class="control-keys"><kbd>Esc</kbd></div>
+          <div class="control-desc">Pausa</div>
+        </div>
+      </div>
+
+      <div class="overlay-tip">
+        💡 Derrota a todos los guardianes para abrir el portal al siguiente nivel.
+      </div>
+
+      <button class="menu-btn" id="controls-back-btn">← VOLVER</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PANTALLA DE CRÉDITOS / ACERCA DEL PROYECTO
+  ══════════════════════════════════════ -->
+  <div id="credits-screen" class="overlay-screen hidden">
+    <div class="overlay-box">
+      <div class="overlay-title">ACERCA DEL PROYECTO</div>
+
+      <div class="credits-content">
+        <div class="credits-section">
+          <div class="credits-label">CONCEPTO Y DESARROLLO</div>
+          <div class="credits-value">Prototipo de demo — Abyss Blade</div>
+        </div>
+        <div class="credits-section">
+          <div class="credits-label">MOTOR</div>
+          <div class="credits-value">Canvas 2D · JavaScript puro</div>
+        </div>
+        <div class="credits-section">
+          <div class="credits-label">TIPOGRAFÍA</div>
+          <div class="credits-value">Cinzel Decorative · Cinzel</div>
+        </div>
+        <div class="credits-section">
+          <div class="credits-label">VERSIÓN</div>
+          <div class="credits-value">Demo v0.1 — 2 niveles jugables</div>
+        </div>
+        <div class="credits-divider"></div>
+        <div class="credits-lore">
+          "Las cavernas guardan secretos que el tiempo olvidó.<br>
+          La Abyss Blade es la única llave hacia la luz."
+        </div>
+      </div>
+
+      <button class="menu-btn" id="credits-back-btn">← VOLVER</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       CANVAS DEL JUEGO
+  ══════════════════════════════════════ -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- HUD -->
+  <!-- ══════════════════════════════════════
+       HUD — Interfaz durante el juego
+       Vida · Energía del Abismo · Fragmentos
+  ══════════════════════════════════════ -->
   <div id="hud" class="hidden">
+
+    <!-- Lado izquierdo: Vida y Energía -->
     <div id="hud-left">
-      <span class="hud-label">TOM</span>
-      <div id="health-bar-wrap">
-        <div id="health-bar"></div>
+      <span class="hud-label">TOM — PORTADOR</span>
+
+      <!-- Barra de vida -->
+      <div class="hud-stat-row">
+        <span class="hud-stat-icon hud-icon-hp">♥</span>
+        <div class="hud-bar-wrap" id="health-bar-wrap">
+          <div id="health-bar"></div>
+          <span class="hud-bar-label" id="hp-text">100 / 100</span>
+        </div>
+      </div>
+
+      <!-- Barra de energía del abismo -->
+      <div class="hud-stat-row">
+        <span class="hud-stat-icon hud-icon-energy">◈</span>
+        <div class="hud-bar-wrap hud-energy-wrap">
+          <div id="energy-bar"></div>
+          <span class="hud-bar-label" id="energy-text">100 / 100</span>
+        </div>
       </div>
     </div>
+
+    <!-- Centro: Zona y objetivo -->
     <div id="hud-center">
       <span id="zone-name">— Cavernas del Abismo —</span>
       <div id="objective-box">
@@ -57,14 +167,52 @@
         <span id="objective-text">Elimina a todos los guardianes del abismo</span>
       </div>
     </div>
+
+    <!-- Lado derecho: Área, Fragmentos y contador de enemigos -->
     <div id="hud-right">
       <span class="hud-label">ÁREA</span>
       <span id="area-label">Nivel 1</span>
+
+      <!-- Contador de fragmentos recolectables -->
+      <div class="hud-fragments">
+        <span class="hud-fragment-icon">◆</span>
+        <span id="fragment-counter" class="hud-label">FRAGMENTOS: <span id="fragment-count">0</span></span>
+      </div>
+
       <span id="enemy-counter" class="hud-label"></span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       INDICACIÓN DE INTERACCIÓN CON ESTATUA
+       Aparece al acercarse a altares / estatuas
+  ══════════════════════════════════════ -->
+  <div id="altar-hint" class="hidden interact-float">
+    <span class="altar-hint-icon">🗿</span>
+    <span>[ E ] Examinar</span>
+  </div>
+
+  <!-- COFRE / OBJETO INTERACTIVO (original, se mantiene) -->
+  <div id="interact-hint" class="hidden interact-float">
+    <span>[ F ] Abrir cofre</span>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       GUÍA EN PANTALLA — Flechas y tooltips
+       Ayuda contextual para el jugador nuevo
+  ══════════════════════════════════════ -->
+  <div id="guide-arrow" class="hidden">
+    <div class="guide-arrow-inner">
+      <span class="guide-arrow-glyph">→</span>
+      <span class="guide-arrow-text" id="guide-text">Explora las cavernas</span>
     </div>
   </div>
 
-  <!-- DIÁLOGO NARRATIVO -->
+  <!-- ══════════════════════════════════════
+       DIÁLOGO NARRATIVO
+       Usado para intro, altar, victoria y fin de demo
+  ══════════════════════════════════════ -->
   <div id="narrative-box" class="hidden">
     <div id="narrative-portrait">⚔</div>
     <div id="narrative-content">
@@ -74,18 +222,42 @@
     <div id="narrative-hint">[ ESPACIO / ENTER para continuar ]</div>
   </div>
 
-  <!-- COFRE / OBJETO INTERACTIVO -->
-  <div id="interact-hint" class="hidden">
-    <span>[ F ] Abrir</span>
-  </div>
-
-  <!-- PAUSA -->
+  <!-- ══════════════════════════════════════
+       PANTALLA DE PAUSA
+  ══════════════════════════════════════ -->
   <div id="pause-screen" class="hidden">
     <div class="pause-box">
       <div class="pause-title">PAUSA</div>
+      <div class="pause-controls-hint">
+        <span>P — Atacar</span>
+        <span>E — Interactuar</span>
+        <span>F — Cofre</span>
+      </div>
       <button class="pause-btn" onclick="resumeGame()">CONTINUAR</button>
       <button class="pause-btn" onclick="restartGame()">REINICIAR</button>
       <button class="pause-btn btn-danger" onclick="goToStartScreen()">VOLVER AL INICIO</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PANTALLA FINAL DE DEMO
+       Se muestra al completar ambos niveles
+  ══════════════════════════════════════ -->
+  <div id="demo-end-screen" class="hidden">
+    <div class="demo-end-box">
+      <div class="demo-end-glyph">⚔</div>
+      <div class="demo-end-title">FIN DEL TRAYECTO</div>
+      <div class="demo-end-subtitle">— Demo Completada —</div>
+      <div class="demo-end-text">
+        "La corrupción apenas comienza.<br>
+        El abismo no fue derrotado… solo silenciado.<br>
+        Tom siente que algo más oscuro aguarda más allá<br>
+        de los portales que aún permanecen sellados."
+      </div>
+      <div class="demo-end-stats" id="demo-stats">
+        <!-- Se llena dinámicamente con fragmentos recolectados -->
+      </div>
+      <button class="menu-btn menu-btn-primary" onclick="goToStartScreen()">VOLVER AL INICIO</button>
     </div>
   </div>
 
